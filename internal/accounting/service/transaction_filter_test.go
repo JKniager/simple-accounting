@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -134,7 +135,29 @@ func TestPeriodFilter(t *testing.T) {
 		})
 	})
 
+	type testAccounts struct {
+		credit *Account
+		debit  *Account
+	}
+
+	var setupTestAccounts = func() testAccounts {
+		credit, err := NewAccount("Savings", Savings, 1234)
+		if err != nil {
+			panic(fmt.Errorf("got an error: %s", err.Error()))
+		}
+		debit, err := NewAccount("MoneySink", Expense, 9999.99)
+		if err != nil {
+			panic(fmt.Errorf("got an error: %s", err.Error()))
+		}
+
+		return testAccounts{
+			credit: credit,
+			debit:  debit,
+		}
+	}
+
 	t.Run("Filter", func(t *testing.T) {
+		testAccs := setupTestAccounts()
 
 		f, err := NewCustomPeriodFilter(
 			time.Date(1999, time.January, 1, 0, 0, 0, 0, time.UTC),
@@ -142,6 +165,48 @@ func TestPeriodFilter(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		assert.True(t, f.Sift())
+		testTran, err := NewTransaction(
+			time.Date(1999, time.January, 1, 0, 0, 0, 0, time.UTC),
+			12.24,
+			testAccs.debit,
+			testAccs.credit,
+			"test",
+		)
+		require.NoError(t, err)
+
+		assert.True(t, f.Filter(testTran))
+
+		testTran, err = NewTransaction(
+			time.Date(1999, time.January, 1, 0, 0, 5, 0, time.UTC),
+			12.24,
+			testAccs.debit,
+			testAccs.credit,
+			"test",
+		)
+		require.NoError(t, err)
+
+		assert.True(t, f.Filter(testTran))
+
+		testTran, err = NewTransaction(
+			time.Date(1999, time.January, 1, 0, 1, 0, 0, time.UTC),
+			1.23,
+			testAccs.debit,
+			testAccs.credit,
+			"test",
+		)
+		require.NoError(t, err)
+
+		assert.False(t, f.Filter(testTran))
+
+		testTran, err = NewTransaction(
+			time.Date(1999, time.January, 1, 0, 2, 0, 0, time.UTC),
+			1.23,
+			testAccs.debit,
+			testAccs.credit,
+			"test",
+		)
+		require.NoError(t, err)
+
+		assert.False(t, f.Filter(testTran))
 	})
 }

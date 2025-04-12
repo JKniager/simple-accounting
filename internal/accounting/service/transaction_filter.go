@@ -16,6 +16,10 @@ type PeriodFilter struct {
 	End   time.Time
 }
 
+func (p *PeriodFilter) Filter(t *Transaction) bool {
+	return (t.Date.Equal(p.Start) || t.Date.After(p.Start)) && t.Date.Before(p.End)
+}
+
 func NewCustomPeriodFilter(start, end time.Time) (*PeriodFilter, error) {
 	if start.After(end) {
 		return nil, ErrStartTimeAfterEnd
